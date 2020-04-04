@@ -123,7 +123,7 @@ def save_fig(fig, title, html_file_name):
     if not exists(HTML_FILE_DIRECTORY):
         makedirs(HTML_FILE_DIRECTORY)
     
-    fig.update_layout(title_text=title,)
+    fig.update_layout(title_text=title)
     fig.write_html(join(HTML_FILE_DIRECTORY, html_file_name), auto_open=True)
         
 def latest_date_column_name(df):
@@ -134,13 +134,32 @@ def latest_date_column_name(df):
 def create_and_save_global_graph(root_dir, input_file_name, graph_title, output_filename):
     df = pd.read_csv(join(root_dir, 'csse_covid_19_time_series', input_file_name))
     df['CountryCode'] = df['Country/Region'].apply(lambda x: country_code(str(x)))
-    color_column = latest_date_column_name(df)
+    latest_date_column = latest_date_column_name(df)
 
     fig = px.choropleth(df,
                         locations='CountryCode',
-                        color=np.log10(df[color_column]),
-                        hover_name=color_column, # column to add to hover information
+                        color=np.log10(df[latest_date_column]),
+                        hover_name=latest_date_column, # column to add to hover information
                         color_continuous_scale="Inferno")
+
+    # Anything between the <extra></extra> tags will appear in a second box on the right part of the hovertext
+    # See https://plotly.com/python-api-reference/generated/plotly.graph_objects.Figure.html -> hovertemplate for details
+    df['text'] = '<b>' + df['CountryCode'].astype(str) + '</b><br>' + \
+                 df[latest_date_column].astype(str) + '<br><extra></extra>'
+    
+    fig = go.Figure(
+        data=go.Choropleth(
+            locations=df['CountryCode'],
+            z=np.log10(df[latest_date_column]),
+            #locationmode='USA-states',
+            colorscale='Inferno',
+            autocolorscale=True,
+            hovertemplate=df['text'],
+            hoverinfo=['none'],
+            marker_line_color='white', # line markers between states
+            showscale=False,
+        )
+    )
 
     fig.update_layout(
         geo=dict(
@@ -148,7 +167,7 @@ def create_and_save_global_graph(root_dir, input_file_name, graph_title, output_
             showcoastlines=True,
             projection_type='equirectangular'
         ),
-        coloraxis_showscale=False # Hide the color-scale bar
+        coloraxis_showscale=False, # Hide the color-scale bar
     )
     
     save_fig(fig, graph_title, output_filename)
@@ -161,28 +180,36 @@ def create_and_save_us_graph(root_dir, input_file_name, graph_title, output_file
 
     sums_by_state['StateCode'] = sums_by_state.index
     df2 = pd.DataFrame(sums_by_state)
-    
-    # fig = go.Figure(
-    #     data=go.Choropleth(
-    #         locations = df2['StateCode'], # Spatial coordinates
-    #         z = np.log10(df2[latest_date_column]), # Data to be color-coded
-    #         locationmode = 'USA-states',
-    #         colorscale = 'Reds'
-    #     )
-    # )
 
-    fig = px.choropleth(df2,
-                        locations='StateCode',
-                        locationmode="USA-states",
-                        color=np.log10(df2[latest_date_column]),
-                        scope="usa",
-                        hover_name=latest_date_column, # column to add to hover information
-                        color_continuous_scale="Inferno")
+    # Anything between the <extra></extra> tags will appear in a second box on the right part of the hovertext
+    # See https://plotly.com/python-api-reference/generated/plotly.graph_objects.Figure.html -> hovertemplate for details
+    df2['text'] = '<b>' + df2['StateCode'].astype(str) + '</b><br>' + \
+                  df2[latest_date_column].astype(str) + '<br><extra></extra>'
+        
+    # fig = px.choropleth(df2,
+    #                     locations='StateCode',
+    #                     locationmode="USA-states",
+    #                     color=np.log10(df2[latest_date_column]),
+    #                     scope="usa",
+    #                     hover_name=latest_date_column, # column to add to hover information
+    #                     color_continuous_scale="Inferno")
+
+    fig = go.Figure(
+        data=go.Choropleth(
+            locations=df2['StateCode'],
+            z=np.log10(df2[latest_date_column]),
+            locationmode='USA-states',
+            colorscale='Inferno',
+            autocolorscale=True,
+            hovertemplate=df2['text'],
+            marker_line_color='white', # line markers between states
+            showscale=False,
+        )
+    )
     
     fig.update_layout(
         geo_scope='usa', # limit map scope to USA
         margin={"r":0,"t":0,"l":0,"b":0},
-        coloraxis_showscale=False,
     )
 
     save_fig(fig, graph_title, output_filename)
@@ -194,25 +221,57 @@ def create_and_save_us_counties_graph(root_dir, input_file_name, graph_title, ou
 
     with urlopen('https://raw.githubusercontent.com/plotly/datasets/master/geojson-counties-fips.json') as response:
         counties = json.load(response)
-
+    
     # TODO: Fill in missing FIPS with 0
 
     # TODO: Cleanup
     df = df[df.iso2 == 'US'][df.FIPS.notnull()]
     df['FIPS'] = df['FIPS'].apply(lambda x: fix_fips(x))
     # df_with_fips['Confirmed'] = df_with_fips['Confirmed'].fillna(value=0)
-    df['text'] = df[latest_date_column].astype(str) + '<br>'
+
+    # Anything between the <extra></extra> tags will appear in a second box on the right part of the hovertext
+    # See https://plotly.com/python-api-reference/generated/plotly.graph_objects.Figure.html -> hovertemplate for details
+    df['text'] = '<b>' + df['Admin2'].astype(str) + ', ' + df['StateCode'] + '</b><br>' + \
+                 df[latest_date_column].astype(str) + '<extra></extra>'
+
+    # fig = go.Figure(
+    #     data=go.Choropleth(
+    #         geojson=counties,
+    #         locations=df['FIPS'],
+    #         z=np.log10(df[latest_date_column]),
+    #         locationmode='USA-states',
+    #         colorscale='Inferno',
+    #         autocolorscale=True,
+    #         hovertemplate=df['text'],
+    #         marker_line_color='white', # line markers between states
+    #         showscale=False,
+    #     )
+    # )
+    
+    # fig.update_layout(
+    #     geo_scope='usa', # limit map scope to USA
+    #     margin={"r":0,"t":0,"l":0,"b":0},
+    # )
     
     fig = px.choropleth(
         df,
         geojson=counties,
         locations='FIPS',
         color=np.log10(df[latest_date_column]),
-        hover_data=[latest_date_column],
+        #hover_data=[latest_date_column],
+        #hover_data=['text'],
+        hover_data=[],
+        #hovertemplate='text',
+        #hover_name=latest_date_column,
+        #hover_name='text',
+        hover_name=None,
         color_continuous_scale="Inferno",
         scope="usa",
+        labels={ 'text': '' },
     )
 
+    fig.update_traces(hovertemplate=df['text']) # TODO: Try text= next
+    
     fig.update_layout(
         margin={"r":0,"t":0,"l":0,"b":0},
         coloraxis_showscale=False
