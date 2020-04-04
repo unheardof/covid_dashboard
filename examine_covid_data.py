@@ -24,7 +24,7 @@ country_code_cache = {
     'MS Zaandam': None, # Another cruise ship
 }
 
-state_name_cache = {
+state_names_to_codes = {
     'Alabama': 'AL',
     'Alaska': 'AK',
     'Arizona': 'AZ',
@@ -136,22 +136,36 @@ def create_and_save_global_graph(root_dir, input_file_name, graph_title, output_
     df['CountryCode'] = df['Country/Region'].apply(lambda x: country_code(str(x)))
     latest_date_column = latest_date_column_name(df)
 
-    fig = px.choropleth(df,
-                        locations='CountryCode',
-                        color=np.log10(df[latest_date_column]),
-                        hover_name=latest_date_column, # column to add to hover information
-                        color_continuous_scale="Inferno")
+    # Add empty rows for any states for which no data has been received
+    all_country_codes = [ country.alpha_3 for country in pycountry.countries.__dict__['objects'] ]
+    missing_countries = set(all_country_codes) - set(df['CountryCode'].tolist())
 
+    next_index = len(df)
+    missing_data_frames = []
+    
+    for country in missing_countries:
+        # using 0.1 instead of zero so that the value will actually show up on the choropleth map
+        missing_data_frames.append(pd.DataFrame({ 'CountryCode': country, latest_date_column: 0.1 }, index = [next_index]))
+        next_index += 1
+
+    missing_data_frames.append(df)
+    df = pd.concat(missing_data_frames)
+    
+    # Make sure that all values actually get displayed (zero values get ignored by the choropleth generation logic)
+    df[latest_date_column] = df[latest_date_column].apply(lambda x: x if x > 0 else 0.1)
+    
     # Anything between the <extra></extra> tags will appear in a second box on the right part of the hovertext
     # See https://plotly.com/python-api-reference/generated/plotly.graph_objects.Figure.html -> hovertemplate for details
+    #
+    # The <latest_date_column> values are cast to int to remove the decimal portion of the number, and then converted to
+    # string to allow it to be added to other strings 
     df['text'] = '<b>' + df['CountryCode'].astype(str) + '</b><br>' + \
-                 df[latest_date_column].astype(str) + '<br><extra></extra>'
-    
+                 df[latest_date_column].astype(int).astype(str) + '<br><extra></extra>'
+
     fig = go.Figure(
         data=go.Choropleth(
             locations=df['CountryCode'],
             z=np.log10(df[latest_date_column]),
-            #locationmode='USA-states',
             colorscale='Inferno',
             autocolorscale=True,
             hovertemplate=df['text'],
@@ -174,34 +188,46 @@ def create_and_save_global_graph(root_dir, input_file_name, graph_title, output_
 
 def create_and_save_us_graph(root_dir, input_file_name, graph_title, output_filename):
     df = pd.read_csv(join(root_dir, 'csse_covid_19_time_series', input_file_name), dtype={ 'FIPS': 'string' })
-    df['StateCode'] = df['Province_State'].apply(lambda x: state_name_cache[x])
+    df['StateCode'] = df['Province_State'].apply(lambda x: state_names_to_codes[x])
     latest_date_column = latest_date_column_name(df)
     sums_by_state = df[['StateCode', latest_date_column]].groupby('StateCode').sum()
 
     sums_by_state['StateCode'] = sums_by_state.index
-    df2 = pd.DataFrame(sums_by_state)
+    df_summed_by_state = pd.DataFrame(sums_by_state)
 
+    # Add empty rows for any states for which no data has been received
+    missing_states = set(state_names_to_codes.values()) - set(df_summed_by_state['StateCode'].tolist())
+
+    next_index = len(df)
+    missing_data_frames = []
+
+    for state in missing_states:
+        # using 0.1 instead of zero so that the value will actually show up on the choropleth map
+        missing_data_frames.append(pd.DataFrame({ 'StateCode': state, latest_date_column: 0.1 }, index = [next_index]))
+        next_index += 1
+
+    missing_data_frames.append(df_summed_by_state)
+    df_summed_by_state = pd.concat(missing_data_frames)
+
+    # Make sure that all values actually get displayed (zero values get ignored by the choropleth generation logic)
+    df_summed_by_state[latest_date_column] = df_summed_by_state[latest_date_column].apply(lambda x: x if x > 0 else 0.1)
+    
     # Anything between the <extra></extra> tags will appear in a second box on the right part of the hovertext
     # See https://plotly.com/python-api-reference/generated/plotly.graph_objects.Figure.html -> hovertemplate for details
-    df2['text'] = '<b>' + df2['StateCode'].astype(str) + '</b><br>' + \
-                  df2[latest_date_column].astype(str) + '<br><extra></extra>'
+    #
+    # The <latest_date_column> values are cast to int to remove the decimal portion of the number, and then converted to
+    # string to allow it to be added to other strings 
+    df_summed_by_state['text'] = '<b>' + df_summed_by_state['StateCode'].astype(str) + '</b><br>' + \
+                                 df_summed_by_state[latest_date_column].astype(int).astype(str) + '<br><extra></extra>'
         
-    # fig = px.choropleth(df2,
-    #                     locations='StateCode',
-    #                     locationmode="USA-states",
-    #                     color=np.log10(df2[latest_date_column]),
-    #                     scope="usa",
-    #                     hover_name=latest_date_column, # column to add to hover information
-    #                     color_continuous_scale="Inferno")
-
     fig = go.Figure(
         data=go.Choropleth(
-            locations=df2['StateCode'],
-            z=np.log10(df2[latest_date_column]),
+            locations=df_summed_by_state['StateCode'],
+            z=np.log10(df_summed_by_state[latest_date_column]),
             locationmode='USA-states',
             colorscale='Inferno',
             autocolorscale=True,
-            hovertemplate=df2['text'],
+            hovertemplate=df_summed_by_state['text'],
             marker_line_color='white', # line markers between states
             showscale=False,
         )
@@ -216,61 +242,56 @@ def create_and_save_us_graph(root_dir, input_file_name, graph_title, output_file
 
 def create_and_save_us_counties_graph(root_dir, input_file_name, graph_title, output_filename):
     df = pd.read_csv(join(root_dir, 'csse_covid_19_time_series', input_file_name), dtype={ 'FIPS': 'string' })
-    df['StateCode'] = df['Province_State'].apply(lambda x: state_name_cache[x])
+    df = df[df.iso2 == 'US'][df.FIPS.notnull()]
+    df['FIPS'] = df['FIPS'].apply(lambda x: fix_fips(x))
+    df['StateCode'] = df['Province_State'].apply(lambda x: state_names_to_codes[x])
+    
     latest_date_column = latest_date_column_name(df)
+    df[latest_date_column] = df[latest_date_column].fillna(value=0)
 
     with urlopen('https://raw.githubusercontent.com/plotly/datasets/master/geojson-counties-fips.json') as response:
         counties = json.load(response)
+
+    # Add empty rows for any FIPS (i.e. counties) for which no data has been received
+    us_county_fips = [ x['id'] for x in counties['features'] if x['properties']['LSAD'] == 'County' ]
+    missing_fips = set(us_county_fips) - set(df['FIPS'].dropna().tolist())
+
+    next_index = len(df)
+    missing_data_frames = []
+
+    for fips in missing_fips:
+        # using 0.1 instead of zero so that the value will actually show up on the choropleth map
+        missing_data_frames.append(pd.DataFrame({ 'FIPS': fips, latest_date_column: 0.1 }, index = [next_index]))
+        next_index += 1
+
+    missing_data_frames.append(df)
+    df = pd.concat(missing_data_frames)
     
-    # TODO: Fill in missing FIPS with 0
-
-    # TODO: Cleanup
-    df = df[df.iso2 == 'US'][df.FIPS.notnull()]
-    df['FIPS'] = df['FIPS'].apply(lambda x: fix_fips(x))
-    # df_with_fips['Confirmed'] = df_with_fips['Confirmed'].fillna(value=0)
-
     # Anything between the <extra></extra> tags will appear in a second box on the right part of the hovertext
     # See https://plotly.com/python-api-reference/generated/plotly.graph_objects.Figure.html -> hovertemplate for details
+    #
+    # The <latest_date_column> values are cast to int to remove the decimal portion of the number, and then converted to
+    # string to allow it to be added to other strings
     df['text'] = '<b>' + df['Admin2'].astype(str) + ', ' + df['StateCode'] + '</b><br>' + \
-                 df[latest_date_column].astype(str) + '<extra></extra>'
+                df[latest_date_column].astype(int).astype(str) + '<extra></extra>'
 
-    # fig = go.Figure(
-    #     data=go.Choropleth(
-    #         geojson=counties,
-    #         locations=df['FIPS'],
-    #         z=np.log10(df[latest_date_column]),
-    #         locationmode='USA-states',
-    #         colorscale='Inferno',
-    #         autocolorscale=True,
-    #         hovertemplate=df['text'],
-    #         marker_line_color='white', # line markers between states
-    #         showscale=False,
-    #     )
-    # )
-    
-    # fig.update_layout(
-    #     geo_scope='usa', # limit map scope to USA
-    #     margin={"r":0,"t":0,"l":0,"b":0},
-    # )
+    # Make sure that all values actually get displayed (zero values get ignored by the choropleth generation logic)
+    df[latest_date_column] = df[latest_date_column].apply(lambda x: x if x > 0 else 0.1)
     
     fig = px.choropleth(
         df,
         geojson=counties,
         locations='FIPS',
         color=np.log10(df[latest_date_column]),
-        #hover_data=[latest_date_column],
-        #hover_data=['text'],
         hover_data=[],
-        #hovertemplate='text',
-        #hover_name=latest_date_column,
-        #hover_name='text',
         hover_name=None,
         color_continuous_scale="Inferno",
         scope="usa",
-        labels={ 'text': '' },
+        title=graph_title, # TODO: Get this working, and then apply it to states too and move out of save logic
     )
 
-    fig.update_traces(hovertemplate=df['text']) # TODO: Try text= next
+    # Reference: https://plotly.com/python/hover-text-and-formatting/
+    fig.update_traces(hovertemplate=df['text'])
     
     fig.update_layout(
         margin={"r":0,"t":0,"l":0,"b":0},
