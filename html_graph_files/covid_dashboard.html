@@ -1,21 +1,57 @@
 <!DOCTYPE html>
 <html>
+  <style>
+    h1 {
+        text-align: center;
+    }
+
+    h2 {
+        text-align: center;
+    }
+
+    h3 {
+        text-align: center;
+    }
+
+    div {
+        text-align: center;
+    }
+  </style>
+  
+  <title>COVID-19 Heatmap</title>
+  
   <body>
-    <h1>COVID-19 Dashboard</h1>
-    <h2>Global</h2>
+    <hr>
+    <h1>Global</h1>
+    <hr>
     <div>
-      <iframe id="confirmed_global" width="30%" height="500px" src="http://timheard-web-server.s3-website.eu-central-1.amazonaws.com/covid_confirmed_global.html">
+      <iframe id="confirmed_global" width="30%" height="300px" src="http://timheard-web-server.s3-website.eu-central-1.amazonaws.com/covid_confirmed_global.html">
       </iframe>
 
-      <iframe id="deaths_global" width="30%" height="500px" src="http://timheard-web-server.s3-website.eu-central-1.amazonaws.com/covid_deaths_global.html">
+      <iframe id="deaths_global" width="30%" height="300px" src="http://timheard-web-server.s3-website.eu-central-1.amazonaws.com/covid_deaths_global.html">
       </iframe>
 
-      <iframe id="recovered_global" width="30%" height="500px" src="http://timheard-web-server.s3-website.eu-central-1.amazonaws.com/covid_recovered_global.html">
+      <iframe id="recovered_global" width="30%" height="300px" src="http://timheard-web-server.s3-website.eu-central-1.amazonaws.com/covid_recovered_global.html">
       </iframe>
     </div>
 
-    <h2>United States</h2>
-    <h3>By State</h3>
+    <div>
+      <iframe id="confirmed_global_line" width="30%" height="300px" src="http://timheard-web-server.s3-website.eu-central-1.amazonaws.com/covid_confirmed_global_line.html">
+      </iframe>
+
+      <iframe id="deaths_global_line" width="30%" height="300px" src="http://timheard-web-server.s3-website.eu-central-1.amazonaws.com/covid_deaths_global_line.html">
+      </iframe>
+
+      <iframe id="recovered_global_line" width="30%" height="300px" src="http://timheard-web-server.s3-website.eu-central-1.amazonaws.com/covid_recovered_global_line.html">
+      </iframe>
+    </div>
+
+    <br>
+    <br>
+    <hr>
+    <h1>United States</h1>
+    <hr>
+
     <div>
       <iframe id="confirmed_us" width="45%" height="500px" src="http://timheard-web-server.s3-website.eu-central-1.amazonaws.com/covid_confirmed_us.html">
       </iframe>
@@ -24,7 +60,14 @@
       </iframe>
     </div>
 
-    <h3>By County</h3>
+    <div>
+      <iframe id="confirmed_us_line" width="45%" height="500px" src="http://timheard-web-server.s3-website.eu-central-1.amazonaws.com/covid_confirmed_us_line.html">
+      </iframe>
+      
+      <iframe id="deaths_us_line" width="45%" height="500px" src="http://timheard-web-server.s3-website.eu-central-1.amazonaws.com/covid_deaths_us_line.html">
+      </iframe>
+    </div>
+    
     <div>
       <iframe id="confirmed_us_counties" width="45%" height="500px" src="http://timheard-web-server.s3-website.eu-central-1.amazonaws.com/covid_confirmed_us_counties.html">
       </iframe>
