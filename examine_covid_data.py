@@ -12,7 +12,7 @@ from urllib.request import urlopen
 import json
 from datetime import datetime, timedelta
 
-HTML_FILE_DIRECTORY = './html_graph_files/'
+HTML_FILE_DIRECTORY = '/home/ec2-user/covid_data/covid-analysis/html_graph_files/'
 
 country_code_cache = {
     'nan': None,
@@ -401,7 +401,8 @@ def create_and_save_us_counties_line_chart(df, graph_title, output_filename):
                   y='Cases',
                   color='Admin2',
                   hover_name='Admin2',
-                  hover_data=['StateCode'])
+                  hover_data=['StateCode'],
+                  labels={ 'Admin2': 'County Name' })
     
     fig.update_layout(
         coloraxis_showscale=False,
@@ -452,7 +453,6 @@ create_and_save_us_counties_heatmap(us_counties_confirmed_df, 'Confirmed COVID-1
 
 top_confirmed_counties_df = us_counties_confirmed_df.sort_values(latest_date_column_name(us_counties_confirmed_df), ascending=False).head(10)
 create_and_save_us_counties_line_chart(top_confirmed_counties_df, 'Top 10 U.S. Counties for Confirmed Cases', 'covid_confirmed_us_counties_top_10_line.html')
-
 
 print('Creating U.S. counties deaths graphs...')
 us_counties_deaths_df = us_counties_data(root_dir, 'time_series_covid19_deaths_US.csv', counties)
