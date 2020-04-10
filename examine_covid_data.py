@@ -307,14 +307,12 @@ def create_and_save_us_counties_heatmap(df, graph_title, output_filename):
     save_fig(fig, graph_title, output_filename)
 
 def prep_line_chart_data(df, location_code_column, location_name_column, start_date = None, additional_column_name = None):
-    latest_date_column = latest_date_column_name(df)
-    
     all_dates = [ datetime.strptime(x, "%m/%d/%y") for x in df.T.index if re.match('([0-9]{1,2}\/){2}[0-9]{2}', x) ]
 
     if start_date == None:
         dates = all_dates
     else:
-        dates = [ d for d in all_dates if d >= start_date ] # Only look at data from past 30 days; too much data split across all counties other     
+        dates = [ d for d in all_dates if d >= start_date ]
     
     dates.sort()
     
@@ -367,10 +365,11 @@ def prep_line_chart_data(df, location_code_column, location_name_column, start_d
         },
         index = indices
     )
-
     
-def create_line_chart(df, location_code_column, location_name_column, start_date = None):
-    fig = px.line(prep_line_chart_data(df, location_code_column, location_name_column, start_date),
+def create_line_chart(input_df, location_code_column, location_name_column, start_date = None):
+    fig_df = prep_line_chart_data(input_df, location_code_column, location_name_column, start_date)
+
+    fig = px.line(fig_df,
                   x='Date',
                   y='Cases',
                   color=location_code_column,
