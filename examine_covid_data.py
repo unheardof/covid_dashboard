@@ -178,9 +178,9 @@ def save_fig(fig, title, html_file_name):
     fig.write_html(join(HTML_FILE_DIRECTORY, html_file_name), auto_open=True)
         
 def latest_date_column_name(df):
-    dates = [ x for x in df.columns if re.match('([0-9]{1,2}\/){2}[0-9]{2}', x) ]
+    dates = [ datetime.strptime(x, "%m/%d/%y") for x in df.T.index if re.match('([0-9]{1,2}\/){2}[0-9]{2}', x) ]
     dates.sort(reverse=True)
-    return dates[0]
+    return datetime_to_date_string(dates[0])
 
 def us_counties_as_json():
     global counties_json
@@ -242,9 +242,9 @@ def us_counties_data(root_dir, input_file_name, counties):
 
     return fill_in_mising_data(df, 'FIPS', missing_fips)
 
-def create_and_save_global_heatmap(df, graph_title, output_filename): 
+def create_and_save_global_heatmap(df, graph_title, output_filename):
     latest_date_column = latest_date_column_name(df)
-    
+
     # Anything between the <extra></extra> tags will appear in a second box on the right part of the hovertext
     # See https://plotly.com/python-api-reference/generated/plotly.graph_objects.Figure.html -> hovertemplate for details
     #
@@ -368,7 +368,6 @@ def prep_line_chart_data(df, location_code_column, location_name_column, start_d
     
 def create_line_chart(input_df, location_code_column, location_name_column, start_date = None):
     fig_df = prep_line_chart_data(input_df, location_code_column, location_name_column, start_date)
-
     fig = px.line(fig_df,
                   x='Date',
                   y='Cases',
@@ -459,4 +458,3 @@ create_and_save_us_counties_heatmap(us_counties_deaths_df, 'COVID-19 Deaths in U
 
 top_deaths_counties_df = us_counties_deaths_df.sort_values(latest_date_column_name(us_counties_deaths_df), ascending=False).head(10)
 create_and_save_us_counties_line_chart(top_deaths_counties_df, 'Top 10 U.S. Counties for COVID-19 Deaths', 'covid_deaths_us_counties_top_10_line.html')
-
