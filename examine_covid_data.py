@@ -14,18 +14,7 @@ from datetime import datetime, timedelta
 
 HTML_FILE_DIRECTORY = '/home/ec2-user/covid_data/covid-analysis/html_graph_files/'
 
-country_code_cache = {
-    'nan': None,
-    'Korea, South': 'KOR',
-    'Cruise Ship': None,
-    'Laos': 'LAO',
-    'Diamond Princess': None,
-    'West Bank and Gaza': 'PSE', # Including the West Bank as part of Palestine
-    'Burma': 'MMR',
-    'MS Zaandam': None, # Another cruise ship
-}
-
-state_names_to_codes = {
+STATE_NAMES_TO_CODES = {
     'Alabama': 'AL',
     'Alaska': 'AK',
     'Arizona': 'AZ',
@@ -82,11 +71,28 @@ state_names_to_codes = {
     'Northern Mariana Islands': 'MP',
     'Puerto Rico': 'PR',
     'Virgin Islands': 'VI',
-    'Grand Princess': None,
-    'Diamond Princess': None,
+    'Grand Princess': 'Grand Princess',
+    'Diamond Princess': 'Diamond Princess',
+    'US Military': 'US Military',
+    'Federal Bureau of Prisons': 'Federal Bureau of Prisons',
+    'Veteran Hospitals': 'Veteran Hospitals'
 }
 
+#
 # Global caching variables to prevent re-compuation of the same data
+#
+
+country_code_cache = {
+    'nan': None,
+    'Korea, South': 'KOR',
+    'Cruise Ship': None,
+    'Laos': 'LAO',
+    'Diamond Princess': None,
+    'West Bank and Gaza': 'PSE', # Including the West Bank as part of Palestine
+    'Burma': 'MMR',
+    'MS Zaandam': None, # Another cruise ship
+}
+
 counties_json = None
 
 def nan_safe_int_cast(value):
@@ -224,9 +230,9 @@ def global_data(root_dir, input_file_name):
 
 def us_states_data(root_dir, input_file_name):
     df = pd.read_csv(join(root_dir, 'csse_covid_19_time_series', input_file_name), dtype={ 'FIPS': 'string' })
-    df['StateCode'] = df['Province_State'].apply(lambda x: state_names_to_codes[x])
+    df['StateCode'] = df['Province_State'].apply(lambda x: STATE_NAMES_TO_CODES[x])
     df_summed_by_state = pd.merge(df.groupby('StateCode').sum(), df.loc[:,['Province_State', 'StateCode']], on='StateCode')
-    missing_states = set(state_names_to_codes.values()) - set(df_summed_by_state['StateCode'].tolist())
+    missing_states = set(STATE_NAMES_TO_CODES.values()) - set(df_summed_by_state['StateCode'].tolist())
 
     return fill_in_mising_data(df_summed_by_state, 'StateCode', missing_states)
 
@@ -234,7 +240,7 @@ def us_counties_data(root_dir, input_file_name, counties):
     df = pd.read_csv(join(root_dir, 'csse_covid_19_time_series', input_file_name), dtype={ 'FIPS': 'string' })
     df = df[df.iso2 == 'US'][df.FIPS.notnull()]
     df['FIPS'] = df['FIPS'].apply(lambda x: fix_fips(x))
-    df['StateCode'] = df['Province_State'].apply(lambda x: state_names_to_codes[x])
+    df['StateCode'] = df['Province_State'].apply(lambda x: STATE_NAMES_TO_CODES[x])
 
     us_county_fips = [ x['id'] for x in counties['features'] if x['properties']['LSAD'] == 'County' ]
     missing_fips = set(us_county_fips) - set(df['FIPS'].dropna().tolist())
@@ -328,14 +334,13 @@ def prep_line_chart_data(df, location_code_column, location_name_column, start_d
         if location_code == None:
             continue
 
+        location_name = df[df[location_code_column] == location_code][location_name_column].iloc[0]
+        if pd.isnull(location_name):
+                location_name = location_code
+        
         for date in dates:
-            location_name = df[df[location_code_column] == location_code][location_name_column].iloc[0]
-
             if additional_column_name is not None:
                 additional_col_values.append(df[df[location_code_column] == location_code][additional_column_name].iloc[0])
-
-            if pd.isnull(location_name):
-                location_name = location_code
 
             dates_col_values.append(date)
             loc_code_col_values.append(location_code)
