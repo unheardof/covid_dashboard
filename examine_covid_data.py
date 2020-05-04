@@ -463,3 +463,6 @@ create_and_save_us_counties_heatmap(us_counties_deaths_df, 'COVID-19 Deaths in U
 
 top_deaths_counties_df = us_counties_deaths_df.sort_values(latest_date_column_name(us_counties_deaths_df), ascending=False).head(10)
 create_and_save_us_counties_line_chart(top_deaths_counties_df, 'Top 10 U.S. Counties for COVID-19 Deaths', 'covid_deaths_us_counties_top_10_line.html')
+
+# TODO: Save component HTML files using timestamped file names
+# TODO: Generate dashboard HTML file (with last updated date [not as an iframe])
